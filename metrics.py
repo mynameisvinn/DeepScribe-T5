@@ -1,3 +1,7 @@
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
+import pandas as pd
+import re
 import math
 import gc
 import torch
@@ -11,10 +15,17 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration,Adafactor
 import os
 import numpy as np
 
+import nltk, string
+from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
+
+nltk.download('stopwords')
+stop_words = list(set(stopwords.words("english")))
+stop_words += list(string.punctuation)
+stop_words += ['__', '___']
+
 
 def generate(texts, model, tokenizer, targets):
-    
-    gc.collect()
     torch.cuda.empty_cache()
     batch_size=256
     num_of_batches=len(texts)*1.0/batch_size
@@ -42,6 +53,7 @@ def generate(texts, model, tokenizer, targets):
             continue
     return [tokenizer.decode(out) for out in outputs], targs
 
+
 def evaluate(inps, targetss, model, tokenizer):
     precisions = []
     recalls = []
@@ -53,6 +65,7 @@ def evaluate(inps, targetss, model, tokenizer):
         precisions.append(p)
         recalls.append(r)
     return np.mean(precisions), np.mean(recalls)
+
 
 def rouge_n(target, pred, n):
     target_list = target.split(' ')
@@ -67,7 +80,8 @@ def rouge_n(target, pred, n):
     precision = match*1.0/len(n_gram_pred)
     recall = match*1.0/len(n_gram_target)
     return [precision, recall]
-import re
+
+
 def get_n_gram_list(n, text):
     text = text.replace('/pad>', '')
     text = text.replace('</s>', '').strip()
@@ -77,13 +91,8 @@ def get_n_gram_list(n, text):
         lis = [ re.sub(r'[^\w\s]', '', w.strip().lower()) for w in target_list[i:i+n]]
         n_gram_target.append(' '.join(lis))
     return n_gram_target
-import nltk, string
-from nltk.corpus import stopwords
-from nltk.tokenize import RegexpTokenizer
-nltk.download('stopwords')
-stop_words = list(set(stopwords.words("english")))
-stop_words += list(string.punctuation)
-stop_words += ['__', '___']
+
+
 def getlsa(texts):
     tokenizer = RegexpTokenizer(r'\b\w{3,}\b')
     tfidf = TfidfVectorizer(lowercase=True, 
@@ -98,11 +107,12 @@ def getlsa(texts):
     lsa_obj = TruncatedSVD(n_components=10, n_iter=1000, random_state=42)
     tfidf_lsa_data = lsa_obj.fit_transform(tfidf_train_df)
     return tfidf_lsa_data
-from sklearn.decomposition import TruncatedSVD
-from sklearn.feature_extraction.text import TfidfVectorizer
-import pandas as pd
+
+
 def sim(v1, v2):
     return np.dot(v1,v2)
+
+
 def lsa_evaluate(inps, targetss, model, tokenizer, concepts):
     preds, targets = generate(inps, model, tokenizer, targetss)
     real_score = 0
@@ -113,4 +123,3 @@ def lsa_evaluate(inps, targetss, model, tokenizer, concepts):
         real_score += score*1.0/len(concepts)
     
     return real_score
-        
