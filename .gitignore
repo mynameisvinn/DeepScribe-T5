@@ -1,0 +1,4 @@
+.DS_Store
+.ipynb_checkpoints/
+__pycache__/
+pytorch_model_categories.bin
