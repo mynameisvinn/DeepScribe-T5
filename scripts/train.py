@@ -1,10 +1,10 @@
 from t1000.metrics import evaluate
 from t1000.model import create_model
+from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
 import os
 import argparse
 
-from transformers import T5Tokenizer, T5ForConditionalGeneration,Adafactor
 import torch
 import pandas as pd
 import numpy as np
@@ -21,10 +21,11 @@ def parser():
 
 
 def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, output_path):
+    LOG.info('Loading model.')
     
     n_batches = int(len(train_df)/batch_size)
     model.train()
-    
+
     for epoch in range(n_epochs):
         for i in range(n_batches):
 
@@ -56,6 +57,7 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
     checkpoint = {'state_dict': model.state_dict(),'optimizer_state_dict': optimizer.state_dict()}
     path = os.path.join(output_path, f'checkpoint_{epoch}_{loss_val}.pt')
     torch.save(checkpoint, path)
+    
 
       
 if __name__ == '__main__':
@@ -72,13 +74,12 @@ if __name__ == '__main__':
 
     training_column = "cat_conc_sec"
 
-
     m, t, o = create_model()
 
     n_epochs = 1
     batch_size = 16
 
     output_path = args.output_path
-
-    train(m, o, t, train_df, test_df, training_column, n_epochs, batch_size, output_path)
-    LOG.info('Train Done.')
+    
+    train(m, t, o, train_df, test_df, training_column, n_epochs, batch_size, output_path)
+    # LOG.info('Train Done.')

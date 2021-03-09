@@ -1,28 +1,27 @@
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
-import pandas as pd
 import re
 import math
 import gc
-import torch
 import argparse
 import gc
 import traceback
-import torch
 import torch
 import pandas as pd
 from transformers import T5Tokenizer, T5ForConditionalGeneration,Adafactor
 import os
 import numpy as np
 
-import nltk, string
-from nltk.corpus import stopwords
-from nltk.tokenize import RegexpTokenizer
+# import nltk, string
+# from nltk.corpus import stopwords
+# from nltk.tokenize import RegexpTokenizer
 
+"""
 nltk.download('stopwords')
 stop_words = list(set(stopwords.words("english")))
 stop_words += list(string.punctuation)
 stop_words += ['__', '___']
+"""
 
 
 def generate(texts, model, tokenizer, targets):
