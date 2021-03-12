@@ -1,24 +1,25 @@
 from t1000.metrics import evaluate
 from t1000.model import create_model
-from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
 import os
 import argparse
 
+from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 import torch
 import pandas as pd
 import numpy as np
 import logging
 
+
 LOG = logging.getLogger(__name__)
 
 def parser():
     p = argparse.ArgumentParser(description='Train T5 model')
-    p.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))  # for pytorch
+    p.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))
     p.add_argument('--data_dir', type=str, default = os.environ.get('SM_CHANNEL_TRAINING'))
-    p.add_argument('--output_path', default = os.environ.get('SM_MODEL_DIR'))
+    p.add_argument('--n_epochs', type=int, default = 1)
+    p.add_argument('--batch_size', type=int, default = 16)
     return p.parse_args()
-
 
 def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, output_path):
     LOG.info('Loading model.')
@@ -51,18 +52,16 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
             loss_val = loss.item()
             loss.backward()
             optimizer.step()
-
-            print(f'>> {epoch} train loss {loss_val}')
-                
-    checkpoint = {'state_dict': model.state_dict(),'optimizer_state_dict': optimizer.state_dict()}
+            LOG.info(f'>> {epoch} train loss {loss_val}')
+    checkpoint = {
+        'state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict()
+        }
     path = os.path.join(output_path, f'checkpoint_{epoch}_{loss_val}.pt')
     torch.save(checkpoint, path)
-    
-
       
 if __name__ == '__main__':
-    LOG.info('Initializing training module...')
-
+    LOG.info('Initializing training.')
     args = parser()
 
     # train_df = pd.read_csv('./data/train_df.csv')
@@ -71,15 +70,16 @@ if __name__ == '__main__':
     data_dir = args.data_dir
     train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
     test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
-
-    training_column = "cat_conc_sec"
-
-    m, t, o = create_model()
-
-    n_epochs = 1
-    batch_size = 16
-
-    output_path = args.output_path
-    
-    train(m, t, o, train_df, test_df, training_column, n_epochs, batch_size, output_path)
-    # LOG.info('Train Done.')
+    training_column = "cat_conc_sec"  # data to extract
+    model, optimizer, tokenizer = create_model()
+    train(
+        model=model, 
+        optimizer=optimizer, 
+        tokenizer=tokenizer, 
+        train_df=train_df, 
+        test_df=test_df, 
+        training_column=training_column, 
+        n_epochs=args.n_epochs, 
+        batch_size=args.batch_size, 
+        output_path=args.model_dir)
+    LOG.info('Training completed.')
