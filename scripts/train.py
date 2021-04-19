@@ -58,7 +58,8 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
         'optimizer_state_dict': optimizer.state_dict()
         }
     path = os.path.join(output_path, f'checkpoint_{epoch}_{loss_val}.pt')
-    torch.save(checkpoint, path)
+    # torch.save(checkpoint, path)
+    model.save_pretrained(path)  # https://github.com/huggingface/transformers/issues/4073
       
 if __name__ == '__main__':
     LOG.info('Initializing training.')
