@@ -60,6 +60,75 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
     path = os.path.join(output_path, f'checkpoint_{epoch}_{loss_val}.pt')
     # torch.save(checkpoint, path)
     model.save_pretrained(path)  # https://github.com/huggingface/transformers/issues/4073
+
+
+
+####
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+
+def model_fn(model_dir):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("================ objects in model_dir ===================")
+    print(os.listdir(model_dir))
+    model = T5ForConditionalGeneration.from_pretrained(model_dir)
+    print("================ model loaded ===========================")
+    return model.to(device)
+
+
+
+
+def input_fn(request_body, request_content_type):
+    """An input_fn that loads a pickled tensor"""
+    if request_content_type == "application/json":
+        data = json.loads(request_body)
+        print("================ input sentences ===============")
+        print(data)
+        
+        if isinstance(data, str):
+            data = [data]
+        elif isinstance(data, list) and len(data) > 0 and isinstance(data[0], str):
+            pass
+        else:
+            raise ValueError("Unsupported input type. Input type can be a string or an non-empty list. \
+                             I got {}".format(data))
+                       
+        #encoded = [tokenizer.encode(x, add_special_tokens=True) for x in data]
+        #encoded = tokenizer(data, add_special_tokens=True) 
+        
+        # for backward compatibility use the following way to encode 
+        # https://github.com/huggingface/transformers/issues/5580
+        tokenizer = T5Tokenizer.from_pretrained('t5-small')
+
+        input_ids = [tokenizer.encode(x, add_special_tokens=True) for x in data]
+        
+        print("================ encoded sentences ==============")
+        output = tokenizer.batch_encode_plus(data, add_special_tokens=True, padding=True,max_length=400, return_tensors='pt')
+        padded = output['input_ids']
+        mask = output['attention_mask']
+
+        return padded.long(), mask.long()
+    raise ValueError("Unsupported content type: {}".format(request_content_type))
+    
+
+def predict_fn(input_data, model):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+
+    input_id, input_mask = input_data
+    input_id = input_id.to(device)
+    input_mask = input_mask.to(device)
+    print("============== encoded data =================")
+    print(input_id, input_mask)
+    with torch.no_grad():
+        # y = model(input_id, attention_mask=input_mask)[0]
+        model.eval()
+        pred = model(input_ids=inputbatch)
+        print("=============== inference result =================")
+        print(y)
+    return y
+####
+
       
 if __name__ == '__main__':
     LOG.info('Initializing training.')
