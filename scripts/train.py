@@ -63,6 +63,7 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 def model_fn(model_dir):
+    LOG.info('reading model.')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("================ objects in model_dir ===================")
     print(os.listdir(model_dir))
@@ -119,7 +120,7 @@ def predict_fn(input_data, model):
     with torch.no_grad():
         # y = model(input_id, attention_mask=input_mask)[0]
         model.eval()
-        pred = model(input_ids=inputbatch)
+        pred = model(input_ids=input_id)
         print("=============== inference result =================")
         print(y)
     return y
