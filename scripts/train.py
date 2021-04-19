@@ -21,7 +21,7 @@ def parser():
     p.add_argument('--batch_size', type=int, default = 16)
     return p.parse_args()
 
-def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, output_path):
+def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, model_dir):
     LOG.info('Loading model.')
     
     n_batches = int(len(train_df)/batch_size)
@@ -53,13 +53,8 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
             loss.backward()
             optimizer.step()
             LOG.info(f'>> {epoch} train loss {loss_val}')
-    checkpoint = {
-        'state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict()
-        }
-    path = os.path.join(output_path, f'checkpoint_{epoch}_{loss_val}.pt')
-    # torch.save(checkpoint, path)
-    model.save_pretrained(path)  # https://github.com/huggingface/transformers/issues/4073
+    
+    model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
 
 
 
@@ -151,5 +146,5 @@ if __name__ == '__main__':
         training_column=training_column, 
         n_epochs=args.n_epochs, 
         batch_size=args.batch_size, 
-        output_path=args.model_dir)
+        model_dir=args.model_dir)
     LOG.info('Training completed.')
