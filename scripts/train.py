@@ -1,6 +1,3 @@
-from t1000.metrics import evaluate
-from t1000.model import create_model
-
 import argparse
 import json
 import logging
@@ -10,6 +7,11 @@ import numpy as np
 import pandas as pd
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 import torch
+from torch.utils.data import DataLoader
+
+from t1000.metrics import evaluate
+from t1000.model import create_model
+from t1000 import Dataset
 
 
 logger = logging.getLogger(__name__)
@@ -19,54 +21,30 @@ def parser():
     p.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))  # where to store model weights (default is /opt/ml/model)
     p.add_argument('--data_dir', type=str, default = os.environ.get('SM_CHANNEL_TRAINING'))  # data containing train_df.csv and # test_df.csv
     p.add_argument('--n_epochs', type=int, default = 1)
-    p.add_argument('--batch_size', type=int, default = 16)
+    p.add_argument('--batch_size', type=int, default = 4)
     p.add_argument('--weights', type=str)
     return p.parse_args()
-
 
 def train(
     model, 
     optimizer, 
-    tokenizer, 
-    train_df, 
-    test_df, 
-    training_column, 
+    dataloader,
     n_epochs, 
-    batch_size, 
     model_dir
     ):
     """Training loop.
     """
-    logger.info('Loading model.')
-    
-    n_batches = int(len(train_df)/batch_size)
     model.train()
 
     for epoch in range(n_epochs):
-        for i in range(n_batches):
-
-            # encode batch
-            new_df= train_df[i*batch_size: i*batch_size+batch_size]
-
-            inputbatch=[]
-            labelbatch=[]
-            
-            for indx,row in new_df.iterrows():
-                data = row[training_column]
-                labels = row['target_text']
-                inputbatch.append(data)
-                labelbatch.append(labels)
-            
-            inputbatch=tokenizer.batch_encode_plus(inputbatch,padding=True,max_length=400,return_tensors='pt')["input_ids"]
-            labelbatch=tokenizer.batch_encode_plus(labelbatch,padding=True,max_length=400,return_tensors="pt")["input_ids"]
-
+        for X, y in dataloader:
             optimizer.zero_grad()
-            outputs = model(input_ids=inputbatch, labels=labelbatch)
+            outputs = model(input_ids=X, labels=y)
             loss = outputs.loss
             loss_val = loss.item()
             loss.backward()
             optimizer.step()
-            logger.info(f'>> {epoch} train loss {loss_val}')
+        logger.info(f'>> epoch {epoch} loss {loss_val}')
     
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
     logger.info(f'>> Model saved at {model_dir}')
@@ -101,11 +79,17 @@ def input_fn(request_body, request_content_type):
         # use a pretrained tokenizer to encode
         tokenizer = T5Tokenizer.from_pretrained('t5-small')
 
-        # encoding syntax from anshul's notebook
-        encoded = tokenizer.batch_encode_plus(
-            data, 
+        inputbatch = self.tokenizer.encode_plus(
+            text=X,
+            padding='max_length',
+            max_length=self.max_length,
+            return_tensors='pt')["input_ids"][0]
+
+
+        encoded = tokenizer.encode_plus(
+            text=data, 
             add_special_tokens=True, 
-            padding=True,
+            padding='max_length,
             max_length=400,
             return_tensors='pt')
         padded = encoded['input_ids']
@@ -139,28 +123,28 @@ def predict_fn(input_data, model):
 
       
 if __name__ == '__main__':
-    logger.info('Initializing training.')
+    logger.info('Training initiated.')
     args = parser()
 
     # train_df = pd.read_csv('./data/train_df.csv')
     # test_df = pd.read_csv('./data/test_df.csv')
     
     data_dir = args.data_dir  # folder containing train_df.csv and test_df.csv
-    train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
-    test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
-    training_column = "cat_conc_sec"  # data to extract
+    # train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
+    # test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
+    # training_column = "cat_conc_sec"  # data to extract
     
-    
+    logger.info('Loading model.')
     model, optimizer, tokenizer = create_model(weights=args.weights)
 
+    logger.info('Loading dataset.')
+    dataset = Dataset(args.data_dir)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+
     train(
-        model=model, 
+        model=model,
+        dataloader=dataloader,
         optimizer=optimizer, 
-        tokenizer=tokenizer, 
-        train_df=train_df, 
-        test_df=test_df, 
-        training_column=training_column, 
-        n_epochs=args.n_epochs, 
-        batch_size=args.batch_size, 
+        n_epochs=args.n_epochs,
         model_dir=args.model_dir)
     logger.info('Training completed.')
