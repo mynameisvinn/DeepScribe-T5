@@ -78,18 +78,10 @@ def input_fn(request_body, request_content_type):
         
         # use a pretrained tokenizer to encode
         tokenizer = T5Tokenizer.from_pretrained('t5-small')
-
-        inputbatch = self.tokenizer.encode_plus(
-            text=X,
-            padding='max_length',
-            max_length=self.max_length,
-            return_tensors='pt')["input_ids"][0]
-
-
         encoded = tokenizer.encode_plus(
             text=data, 
             add_special_tokens=True, 
-            padding='max_length,
+            padding='max_length',
             max_length=400,
             return_tensors='pt')
         padded = encoded['input_ids']
