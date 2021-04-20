@@ -56,6 +56,7 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
             LOG.info(f'>> {epoch} train loss {loss_val}')
     
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
+    LOG.info(f'>> model saved at {model_dir}')
 
 
 
@@ -92,11 +93,8 @@ def input_fn(request_body, request_content_type):
         #encoded = [tokenizer.encode(x, add_special_tokens=True) for x in data]
         #encoded = tokenizer(data, add_special_tokens=True) 
         
-        # for backward compatibility use the following way to encode 
-        # https://github.com/huggingface/transformers/issues/5580
+        # use a pretrained tokenizer to encode
         tokenizer = T5Tokenizer.from_pretrained('t5-small')
-
-        input_ids = [tokenizer.encode(x, add_special_tokens=True) for x in data]
         
         print("================ encoded sentences ==============")
         output = tokenizer.batch_encode_plus(data, add_special_tokens=True, padding=True,max_length=400, return_tensors='pt')
