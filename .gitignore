@@ -3,3 +3,4 @@
 __pycache__/
 pytorch_model_categories.bin
 model/
+saved/
