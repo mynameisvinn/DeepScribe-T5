@@ -12,7 +12,7 @@ import numpy as np
 import logging
 
 
-LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 def parser():
     p = argparse.ArgumentParser(description='Train T5 model')
@@ -23,7 +23,9 @@ def parser():
     return p.parse_args()
 
 def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, model_dir):
-    LOG.info('Loading model.')
+    """Training loop.
+    """
+    logger.info('Loading model.')
     
     n_batches = int(len(train_df)/batch_size)
     model.train()
@@ -46,40 +48,31 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
             inputbatch=tokenizer.batch_encode_plus(inputbatch,padding=True,max_length=400,return_tensors='pt')["input_ids"]
             labelbatch=tokenizer.batch_encode_plus(labelbatch,padding=True,max_length=400,return_tensors="pt")["input_ids"]
 
-            # forward pass
             optimizer.zero_grad()
             outputs = model(input_ids=inputbatch, labels=labelbatch)
             loss = outputs.loss
             loss_val = loss.item()
             loss.backward()
             optimizer.step()
-            LOG.info(f'>> {epoch} train loss {loss_val}')
+            logger.info(f'>> {epoch} train loss {loss_val}')
     
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
-    LOG.info(f'>> model saved at {model_dir}')
+    logger.info(f'>> Model saved at {model_dir}')
 
-
-
-####
-from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 def model_fn(model_dir):
-    LOG.info('reading model.')
+    """Instantiate model for inference.
+    """
+    print('Artifacts in model_dir', os.listdir(model_dir))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("================ objects in model_dir ===================")
-    print(os.listdir(model_dir))
     model = T5ForConditionalGeneration.from_pretrained(model_dir)
-    print("================ model loaded ===========================")
     return model.to(device)
-
-
 
 
 def input_fn(request_body, request_content_type):
     """An input_fn that loads a pickled tensor"""
     if request_content_type == "application/json":
         data = json.loads(request_body)
-        print("================ input sentences ===============")
         print(data)
         
         if isinstance(data, str):
@@ -95,17 +88,24 @@ def input_fn(request_body, request_content_type):
         
         # use a pretrained tokenizer to encode
         tokenizer = T5Tokenizer.from_pretrained('t5-small')
-        
-        print("================ encoded sentences ==============")
-        output = tokenizer.batch_encode_plus(data, add_special_tokens=True, padding=True,max_length=400, return_tensors='pt')
-        padded = output['input_ids']
-        mask = output['attention_mask']
 
+        # encoding syntax from anshul's notebook
+        encoded = tokenizer.batch_encode_plus(
+            data, 
+            add_special_tokens=True, 
+            padding=True,
+            max_length=400,
+            return_tensors='pt')
+        padded = encoded['input_ids']
+        mask = encoded['attention_mask']
         return padded.long(), mask.long()
+    # raise error if input is not json
     raise ValueError("Unsupported content type: {}".format(request_content_type))
     
 
 def predict_fn(input_data, model):
+    """Inference using model and tokenized input.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
@@ -113,24 +113,21 @@ def predict_fn(input_data, model):
     input_id, input_mask = input_data
     input_id = input_id.to(device)
     input_mask = input_mask.to(device)
-    print("============== encoded data =================")
-    print(input_id, input_mask)
-    with torch.no_grad():
-        # y = model(input_id, attention_mask=input_mask)[0]
-        model.eval()
 
+    print('>> input data is', input_id, input_mask)
+    
+    with torch.no_grad():
+        # t5 models use a generate method
         # https://www.kaggle.com/parthplc/t5-fine-tuning-tutorial
         pred = model.generate(
             input_ids=input_id, 
             attention_mask=input_mask)
-        print("=============== inference result =================")
-        LOG.info('prediction is:', pred)
+        logger.info('prediction is:', pred)
     return pred
-####
 
       
 if __name__ == '__main__':
-    LOG.info('Initializing training.')
+    logger.info('Initializing training.')
     args = parser()
 
     # train_df = pd.read_csv('./data/train_df.csv')
@@ -151,4 +148,4 @@ if __name__ == '__main__':
         n_epochs=args.n_epochs, 
         batch_size=args.batch_size, 
         model_dir=args.model_dir)
-    LOG.info('Training completed.')
+    logger.info('Training completed.')
