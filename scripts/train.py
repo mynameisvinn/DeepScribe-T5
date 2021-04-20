@@ -120,10 +120,14 @@ def predict_fn(input_data, model):
     with torch.no_grad():
         # y = model(input_id, attention_mask=input_mask)[0]
         model.eval()
-        pred = model(input_ids=input_id)
+
+        # https://www.kaggle.com/parthplc/t5-fine-tuning-tutorial
+        pred = model.generate(
+            input_ids=input_id, 
+            attention_mask=input_mask)
         print("=============== inference result =================")
-        print(y)
-    return y
+        LOG.info('prediction is:', pred)
+    return pred
 ####
 
       
