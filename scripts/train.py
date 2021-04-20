@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -14,14 +15,15 @@ from t1000.model import create_model
 from t1000 import Dataset
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Deepscribe')
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 def parser():
     p = argparse.ArgumentParser(description='Train T5 model')
     p.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))  # where to store model weights (default is /opt/ml/model)
     p.add_argument('--data_dir', type=str, default = os.environ.get('SM_CHANNEL_TRAINING'))  # data containing train_df.csv and # test_df.csv
-    p.add_argument('--n_epochs', type=int, default = 1)
-    p.add_argument('--batch_size', type=int, default = 4)
+    p.add_argument('--n_epochs', type=int, default = 3)
+    p.add_argument('--batch_size', type=int, default = 24)
     p.add_argument('--weights', type=str)
     return p.parse_args()
 
@@ -37,17 +39,19 @@ def train(
     model.train()
 
     for epoch in range(n_epochs):
+        average_loss = []
         for X, y in dataloader:
             optimizer.zero_grad()
             outputs = model(input_ids=X, labels=y)
             loss = outputs.loss
-            loss_val = loss.item()
+            average_loss.append(loss.item())
             loss.backward()
             optimizer.step()
-        logger.info(f'>> epoch {epoch} loss {loss_val}')
+        average_loss = np.mean(average_loss)
+        logger.info(f'>> Epoch {epoch} Loss {average_loss}')
     
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
-    logger.info(f'>> Model saved at {model_dir}')
+    logger.info(f'Model saved at {model_dir}')
 
 
 def model_fn(model_dir):
@@ -140,3 +144,4 @@ if __name__ == '__main__':
         n_epochs=args.n_epochs,
         model_dir=args.model_dir)
     logger.info('Training completed.')
+    print('training completed')
