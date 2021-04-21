@@ -30,14 +30,15 @@ def parser():
 
 def train(
     model, 
-    optimizer, 
     dataloader,
+    optimizer,
     n_epochs, 
     model_dir
     ):
     """Training loop.
     """
     model.train()
+    logger.info(f'Setting model to train mode.')
 
     for epoch in range(n_epochs):
         average_loss = []
@@ -143,5 +144,6 @@ if __name__ == '__main__':
         dataloader=dataloader,
         optimizer=optimizer, 
         n_epochs=args.n_epochs,
-        model_dir=args.model_dir)
+        model_dir=args.model_dir
+        )
     logger.info('Training completed.')
