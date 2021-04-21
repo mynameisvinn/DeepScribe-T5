@@ -6,12 +6,7 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 def create_model(weights):
     """Return a T5 model.
     """
-    if weights is None:
-        weights = 't5-small'
-    try:    
-        model = T5ForConditionalGeneration.from_pretrained(weights)    
-    except:
-        raise ValueError("Invalid weights provided.")
+    model = T5ForConditionalGeneration.from_pretrained(weights)
     tokenizer = T5Tokenizer.from_pretrained('t5-small')
     optimizer = Adafactor(
         params=model.parameters(),

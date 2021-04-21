@@ -27,6 +27,7 @@ def parser():
     p.add_argument('--weights', type=str, default='t5-small')
     return p.parse_args()
 
+
 def train(
     model, 
     optimizer, 
@@ -130,12 +131,12 @@ if __name__ == '__main__':
     # test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
     # training_column = "cat_conc_sec"  # data to extract
     
-    logger.info('Loading model.')
     model, optimizer, tokenizer = create_model(weights=args.weights)
-
-    logger.info('Loading dataset.')
+    logger.info('Loaded model.')
+    
     dataset = Dataset(args.data_dir)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=24, shuffle=True)
+    logger.info('Loaded dataset.')
 
     train(
         model=model,
@@ -144,4 +145,3 @@ if __name__ == '__main__':
         n_epochs=args.n_epochs,
         model_dir=args.model_dir)
     logger.info('Training completed.')
-    print('training completed')
