@@ -28,7 +28,7 @@ def parser():
     return p.parse_args()
 
 
-def train(
+def train_loop(
     model, 
     dataloader,
     optimizer,
@@ -132,14 +132,14 @@ if __name__ == '__main__':
     # test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
     # training_column = "cat_conc_sec"  # data to extract
     
-    model, optimizer, tokenizer = create_model(weights=args.weights)
+    model, optimizer = create_model()
     logger.info('Loaded model.')
     
     dataset = Dataset(args.data_dir)
     dataloader = DataLoader(dataset, batch_size=24, shuffle=True)
     logger.info('Loaded dataset.')
 
-    train(
+    train_loop(
         model=model,
         dataloader=dataloader,
         optimizer=optimizer, 

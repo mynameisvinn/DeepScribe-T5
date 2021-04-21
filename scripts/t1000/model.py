@@ -3,11 +3,10 @@
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
 
-def create_model(weights):
+def create_model():
     """Return a T5 model.
     """
-    model = T5ForConditionalGeneration.from_pretrained(weights)
-    tokenizer = T5Tokenizer.from_pretrained('t5-small')
+    model = T5ForConditionalGeneration.from_pretrained('t5-small')
     optimizer = Adafactor(
         params=model.parameters(),
         lr=1e-4,
@@ -19,4 +18,4 @@ def create_model(weights):
         relative_step=False,
         scale_parameter=False,
         warmup_init=False)
-    return model, optimizer, tokenizer
+    return model, optimizer
