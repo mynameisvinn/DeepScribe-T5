@@ -3,7 +3,7 @@
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
 
-def create_model(weights=None):
+def create_model(weights):
     """Return a T5 model.
     """
     if weights is None:

@@ -24,7 +24,7 @@ def parser():
     p.add_argument('--data_dir', type=str, default=os.environ.get('SM_CHANNEL_TRAINING'))  # data containing train_df.csv and # test_df.csv
     p.add_argument('--n_epochs', type=int, default=3)
     p.add_argument('--batch_size', type=int, default=24)
-    p.add_argument('--weights', type=str, default=None)
+    p.add_argument('--weights', type=str, default='t5-small')
     return p.parse_args()
 
 def train(
