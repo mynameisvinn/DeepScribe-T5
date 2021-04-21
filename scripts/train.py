@@ -98,10 +98,7 @@ def input_fn(request_body, request_content_type):
         else:
             raise ValueError("Unsupported input type. Input type can be a string or an non-empty list. \
                              I got {}".format(data))
-                       
-        #encoded = [tokenizer.encode(x, add_special_tokens=True) for x in data]
-        #encoded = tokenizer(data, add_special_tokens=True) 
-        
+                               
         # use a pretrained tokenizer to encode
         tokenizer = T5Tokenizer.from_pretrained('t5-small')
         encoded = tokenizer.encode_plus(
