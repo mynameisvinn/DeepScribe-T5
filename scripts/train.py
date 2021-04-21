@@ -21,10 +21,10 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 def parser():
     p = argparse.ArgumentParser(description='Train T5 model')
     p.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))  # where to store model weights (default is /opt/ml/model)
-    p.add_argument('--data_dir', type=str, default = os.environ.get('SM_CHANNEL_TRAINING'))  # data containing train_df.csv and # test_df.csv
-    p.add_argument('--n_epochs', type=int, default = 3)
-    p.add_argument('--batch_size', type=int, default = 24)
-    p.add_argument('--weights', type=str)
+    p.add_argument('--data_dir', type=str, default=os.environ.get('SM_CHANNEL_TRAINING'))  # data containing train_df.csv and # test_df.csv
+    p.add_argument('--n_epochs', type=int, default=3)
+    p.add_argument('--batch_size', type=int, default=24)
+    p.add_argument('--weights', type=str, default=None)
     return p.parse_args()
 
 def train(
