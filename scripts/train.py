@@ -40,7 +40,24 @@ def train_loop(
     model.train()
     logger.info(f'Setting model to train mode.')
 
+    tokenizer = T5Tokenizer.from_pretrained('t5-small')
+
     for epoch in range(n_epochs):
+        train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
+        training_column = "cat_conc_sec" 
+        data = train_df[training_column]
+        labels = train_df['target_text']
+
+        inputbatch=tokenizer.batch_encode_plus(data,padding=True,max_length=400,return_tensors='pt')["input_ids"]
+        labelbatch=tokenizer.batch_encode_plus(labels,padding=True,max_length=400,return_tensors="pt")["input_ids"]
+        optimizer.zero_grad()
+        outputs = model(input_ids=inputbatch, labels=labelbatch)
+        loss = outputs.loss
+        loss_val = loss.item()
+        loss.backward()
+        optimizer.step()
+        logger.info(f'epoch {epoch}')
+        """
         average_loss = []
         for X, y in dataloader:
             logger.info(f'Batch from dataloader {X}.')
@@ -53,6 +70,7 @@ def train_loop(
             optimizer.step()
         average_loss = np.mean(average_loss)
         logger.info(f'>> Epoch {epoch} Loss {average_loss}')
+        """
     
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
     logger.info(f'Model saved at {model_dir}')
@@ -126,8 +144,6 @@ if __name__ == '__main__':
     logger.info('Training initiated.')
     args = parser()
 
-    # train_df = pd.read_csv('./data/train_df.csv')
-    # test_df = pd.read_csv('./data/test_df.csv')
     
     data_dir = args.data_dir  # folder containing train_df.csv and test_df.csv
     # train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
