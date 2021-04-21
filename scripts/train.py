@@ -43,8 +43,10 @@ def train_loop(
     for epoch in range(n_epochs):
         average_loss = []
         for X, y in dataloader:
+            logger.info(f'Batch from dataloader {X}.')
             optimizer.zero_grad()
             outputs = model(input_ids=X, labels=y)
+            logger.info(f'Output from model {outputs}.')
             loss = outputs.loss
             average_loss.append(loss.item())
             loss.backward()
@@ -143,7 +145,7 @@ if __name__ == '__main__':
         model=model,
         dataloader=dataloader,
         optimizer=optimizer, 
-        n_epochs=args.n_epochs,
+        n_epochs=2,
         model_dir=args.model_dir
         )
     logger.info('Training completed.')
