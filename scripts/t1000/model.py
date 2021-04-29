@@ -1,4 +1,5 @@
 """Define model architecture."""
+import os
 
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
