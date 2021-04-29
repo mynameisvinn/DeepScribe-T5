@@ -139,7 +139,8 @@ if __name__ == '__main__':
     train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
     test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
     training_column = "cat_conc_sec"  # data to extract
-    model, optimizer, tokenizer = create_model(args.checkpoint_path)
+    checkpoint_path = args.checkpoint_path + '/t5'
+    model, optimizer, tokenizer = create_model(checkpoint_path)
     train(
         model=model, 
         optimizer=optimizer, 
@@ -150,5 +151,5 @@ if __name__ == '__main__':
         n_epochs=args.n_epochs, 
         batch_size=args.batch_size, 
         model_dir=args.model_dir,
-        checkpoint_path=args.checkpoint_path)
+        checkpoint_path=checkpoint_path)
     LOG.info('Training completed.')

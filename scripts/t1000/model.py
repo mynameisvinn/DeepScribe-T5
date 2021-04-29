@@ -4,7 +4,7 @@ import os
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
 
-def create_model(checkpoint_path=None):
+def create_model(checkpoint_path):
     """Return a T5 model.
     """
     if os.path.isdir(checkpoint_path):
