@@ -12,7 +12,7 @@ import numpy as np
 import logging
 
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger('DeepScribe')
 
 def parser():
     p = argparse.ArgumentParser(description='Train T5 model')
@@ -20,10 +20,17 @@ def parser():
     p.add_argument('--data_dir', type=str, default = os.environ.get('SM_CHANNEL_TRAINING'))
     p.add_argument('--n_epochs', type=int, default = 1)
     p.add_argument('--batch_size', type=int, default = 16)
+    p.add_argument('--checkpoint_path', type=str, default='/opt/ml/checkpoints')
     return p.parse_args()
 
 
-def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, model_dir):
+def _save_checkpoint(model, checkpoint_path):
+    """Save transformer checkpoint to /opt/ml/checkpoints.
+    """
+    model.save_pretrained(checkpoint_path)
+
+
+def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, model_dir, checkpoint_path):
     LOG.info('Loading model.')
     
     n_batches = int(len(train_df)/batch_size)
@@ -55,6 +62,7 @@ def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epo
             loss.backward()
             optimizer.step()
             LOG.info(f'>> {epoch} train loss {loss_val}')
+        _save_checkpoint(model, checkpoint_path)
     
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
     LOG.info(f'>> model saved at {model_dir}')
@@ -131,7 +139,7 @@ if __name__ == '__main__':
     train_df = pd.read_csv(os.path.join(data_dir, "train_df.csv"))
     test_df = pd.read_csv(os.path.join(data_dir, "test_df.csv"))
     training_column = "cat_conc_sec"  # data to extract
-    model, optimizer, tokenizer = create_model()
+    model, optimizer, tokenizer = create_model(args.checkpoint_path)
     train(
         model=model, 
         optimizer=optimizer, 
@@ -141,5 +149,6 @@ if __name__ == '__main__':
         training_column=training_column, 
         n_epochs=args.n_epochs, 
         batch_size=args.batch_size, 
-        model_dir=args.model_dir)
+        model_dir=args.model_dir,
+        checkpoint_path=args.checkpoint_path)
     LOG.info('Training completed.')

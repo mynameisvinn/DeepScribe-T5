@@ -3,12 +3,15 @@
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
 
 
-def create_model():
+def create_model(checkpoint_path=None):
     """Return a T5 model.
     """
-
+    if os.path.isdir(checkpoint_path):
+        model = T5ForConditionalGeneration.from_pretrained(checkpoint_path)
+    else:
+        model = T5ForConditionalGeneration.from_pretrained('t5-small')
+        os.mkdir(checkpoint_path)
     tokenizer = T5Tokenizer.from_pretrained('t5-small')
-    model = T5ForConditionalGeneration.from_pretrained('t5-small')
     optimizer = Adafactor(
         params=model.parameters(),
         lr=1e-4,
