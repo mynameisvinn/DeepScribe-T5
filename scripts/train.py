@@ -1,18 +1,19 @@
-from t1000.metrics import evaluate
-from t1000.model import create_model
-
-import os
 import argparse
 import json
-
-from transformers import T5Tokenizer, T5ForConditionalGeneration, Adafactor
-import torch
-import pandas as pd
-import numpy as np
 import logging
+import os
+
+import numpy as np
+import pandas as pd
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+import torch
+
+from t1000.metrics import evaluate
+from t1000.model import create_model, _save_checkpoint
 
 
-LOG = logging.getLogger('DeepScribe')
+logger = logging.getLogger('DeepScribe')
+logger.setLevel(logging.DEBUG)
 
 def parser():
     p = argparse.ArgumentParser(description='Train T5 model')
@@ -24,54 +25,68 @@ def parser():
     return p.parse_args()
 
 
-def _save_checkpoint(model, checkpoint_path):
-    """Save transformer checkpoint to /opt/ml/checkpoints.
+def train(
+        model, 
+        optimizer, 
+        tokenizer, 
+        train_df, 
+        test_df, 
+        training_column, 
+        n_epochs, 
+        batch_size, 
+        model_dir, 
+        checkpoint_path):
+    """Main training loop.
     """
-    model.save_pretrained(checkpoint_path)
-
-
-def train(model, optimizer, tokenizer, train_df, test_df, training_column, n_epochs, batch_size, model_dir, checkpoint_path):
-    LOG.info('Loading model.')
+    logger.info('Loading model.')
     
     n_batches = int(len(train_df)/batch_size)
     model.train()
-
     for epoch in range(n_epochs):
         for i in range(n_batches):
 
             # encode batch
-            new_df= train_df[i*batch_size: i*batch_size+batch_size]
+            new_df = train_df[i*batch_size: i*batch_size+batch_size]
 
             inputbatch=[]
             labelbatch=[]
             
-            for indx,row in new_df.iterrows():
+            for indx, row in new_df.iterrows():
                 data = row[training_column]
                 labels = row['target_text']
                 inputbatch.append(data)
                 labelbatch.append(labels)
             
-            inputbatch=tokenizer.batch_encode_plus(inputbatch,padding=True,max_length=400,return_tensors='pt')["input_ids"]
-            labelbatch=tokenizer.batch_encode_plus(labelbatch,padding=True,max_length=400,return_tensors="pt")["input_ids"]
+            inputbatch = tokenizer.batch_encode_plus(
+                inputbatch,
+                padding=True,
+                max_length=400,
+                return_tensors='pt')["input_ids"]
+            labelbatch = tokenizer.batch_encode_plus(
+                labelbatch,
+                padding=True,
+                max_length=400,
+                return_tensors="pt")["input_ids"]
 
             # forward pass
             optimizer.zero_grad()
-            outputs = model(input_ids=inputbatch, labels=labelbatch)
+            outputs = model(
+                input_ids=inputbatch, 
+                labels=labelbatch)
             loss = outputs.loss
             loss_val = loss.item()
             loss.backward()
             optimizer.step()
-            LOG.info(f'>> {epoch} train loss {loss_val}')
+            logger.info(f'>> {epoch} train loss {loss_val}')
+        # save checkpoints to checkpoint_s3_uri during training with spot instances
         _save_checkpoint(model, checkpoint_path)
-    
+    # save model to the final output folder
     model.save_pretrained(model_dir)  # https://github.com/huggingface/transformers/issues/4073
-    LOG.info(f'>> model saved at {model_dir}')
+    logger.info(f'>> model saved at {model_dir}')
 
 
-
-####
 def model_fn(model_dir):
-    LOG.info('reading model.')
+    logger.info('reading model.')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("================ objects in model_dir ===================")
     print(os.listdir(model_dir))
@@ -84,9 +99,7 @@ def input_fn(request_body, request_content_type):
     """An input_fn that loads a pickled tensor"""
     if request_content_type == "application/json":
         data = json.loads(request_body)
-        print("================ input sentences ===============")
-        print(data)
-        
+
         if isinstance(data, str):
             data = [data]
         elif isinstance(data, list) and len(data) > 0 and isinstance(data[0], str):
@@ -97,9 +110,12 @@ def input_fn(request_body, request_content_type):
 
         # use a pretrained tokenizer to encode
         tokenizer = T5Tokenizer.from_pretrained('t5-small')
-        
-        print("================ encoded sentences ==============")
-        output = tokenizer.batch_encode_plus(data, add_special_tokens=True, padding=True,max_length=400, return_tensors='pt')
+        output = tokenizer.batch_encode_plus(
+            data, 
+            add_special_tokens=True, 
+            padding=True,
+            max_length=400, 
+            return_tensors='pt')
         padded = output['input_ids']
         mask = output['attention_mask']
 
@@ -115,24 +131,18 @@ def predict_fn(input_data, model):
     input_id, input_mask = input_data
     input_id = input_id.to(device)
     input_mask = input_mask.to(device)
-    print("============== encoded data =================")
-    print(input_id, input_mask)
     with torch.no_grad():
-        # y = model(input_id, attention_mask=input_mask)[0]
         model.eval()
-
         # https://www.kaggle.com/parthplc/t5-fine-tuning-tutorial
         pred = model.generate(
             input_ids=input_id, 
             attention_mask=input_mask)
-        print("=============== inference result =================")
-        LOG.info('prediction is:', pred)
+        logger.info('Prediction:', pred)
     return pred
-####
 
       
 if __name__ == '__main__':
-    LOG.info('Initializing training.')
+    logger.info('Training Initialized.')
     args = parser()
     
     data_dir = args.data_dir
@@ -152,4 +162,4 @@ if __name__ == '__main__':
         batch_size=args.batch_size, 
         model_dir=args.model_dir,
         checkpoint_path=checkpoint_path)
-    LOG.info('Training completed.')
+    logger.info('Training completed.')

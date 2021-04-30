@@ -25,3 +25,9 @@ def create_model(checkpoint_path):
         scale_parameter=False,
         warmup_init=False)
     return model, optimizer, tokenizer
+
+
+def _save_checkpoint(model, checkpoint_path):
+    """Save transformer checkpoint to /opt/ml/checkpoints.
+    """
+    model.save_pretrained(checkpoint_path)
